@@ -7,6 +7,7 @@ use crate::{
     memory::{MappingType, MemoryManager, ref_current_page_table},
     serial_print,
     task::{
+        get_current_thread,
         process::{PROCESSES, ProcessId},
         scheduler::SCHEDULER,
     },
@@ -130,4 +131,9 @@ pub fn sys_fstat(fd: usize, buf: usize) -> isize {
         return -1;
     }
     0
+}
+
+pub fn sys_fork() -> isize {
+    let current_thread = get_current_thread();
+    current_thread.read().fork_thread()
 }

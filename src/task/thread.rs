@@ -4,14 +4,13 @@ use core::sync::atomic::{AtomicU64, Ordering};
 use spin::RwLock;
 
 use super::context::Context;
-use super::get_current_process;
-use super::process::{KERNEL_PROCESS, WeakSharedProcess};
+use super::process::{KERNEL_PROCESS, PROCESSES, WeakSharedProcess};
 use super::scheduler::SCHEDULER;
 use super::stack::{KernelStack, UserStack};
 use crate::gdt::Selectors;
-use crate::memory::{ExtendedPageTable, KERNEL_PAGE_TABLE};
+use crate::memory::{ExtendedPageTable, KERNEL_PAGE_TABLE, ref_current_page_table};
 
-core::arch::global_asm!(include_str!("../syscall/ret_syscall.S"));
+core::arch::global_asm!(include_str!("../syscall/syscall.S"));
 
 unsafe extern "C" {
     fn ret_from_syscall();
@@ -91,8 +90,11 @@ impl Thread {
         SCHEDULER.lock().add(Arc::downgrade(&thread));
     }
 
-    pub fn fork_thread(&self) {
-        let current_process = get_current_process();
+    pub fn fork_thread(&self) -> isize {
+        let current_process = Arc::new(RwLock::new(super::process::Process::new(
+            &self.process.upgrade().unwrap().read().name,
+            ref_current_page_table(),
+        )));
 
         let mut thread = Self::new(Arc::downgrade(&current_process));
         let mut process = current_process.write();
@@ -102,14 +104,18 @@ impl Thread {
             ret_from_syscall as usize,
             UserStack::end_address(),
             process.page_table.physical_address(),
-            Selectors::get_user_segments(),
+            Selectors::get_kernel_segments(),
         );
+        thread.context.rsp = thread.context.address().as_u64() as usize;
         thread.context.rcx = self.context.rip;
         thread.context.rax = 0;
 
         let thread = Arc::new(RwLock::new(thread));
         process.threads.push(thread.clone());
 
+        PROCESSES.write().push(current_process.clone());
         SCHEDULER.lock().add(Arc::downgrade(&thread));
+
+        return current_process.read().id.0 as isize;
     }
 }

@@ -4,6 +4,7 @@ use x86_64::registers::model_specific::{LStar, SFMask, Star};
 use x86_64::registers::rflags::RFlags;
 
 use crate::gdt::Selectors;
+use crate::task::context::Context;
 
 pub fn init() {
     SFMask::write(RFlags::INTERRUPT_FLAG);
@@ -29,14 +30,17 @@ pub fn init() {
 extern "C" fn syscall_handler() {
     unsafe {
         core::arch::naked_asm!(
-            "push rcx",
-            "push r11",
+            "sub rsp, 0x38",
+            crate::push_context!(),
 
             // Move the 4th argument in r10 to rcx to fit the C ABI
-            "mov rcx, r10",
+            "mov rdi, rsp",
             "call {syscall_matcher}",
 
-            "jmp ret_from_syscall",
+            crate::pop_context!(),
+            "add rsp, 0x38",
+
+            "sysretq",
             syscall_matcher = sym syscall_matcher,
         );
     }
@@ -48,21 +52,22 @@ use sc::nr::*;
 const SYS_PUT_STRING: usize = 10000;
 const SYS_MALLOC: usize = 10001;
 
-fn syscall_matcher(
-    arg1: usize,
-    arg2: usize,
-    arg3: usize,
-    arg4: usize,
-    arg5: usize,
-    arg6: usize,
-) -> isize {
-    let syscall_num: usize;
-    unsafe { core::arch::asm!("mov {0}, rax", out(reg) syscall_num) };
+fn syscall_matcher(regs: &mut Context) {
+    let arg1 = regs.rdi;
+    let arg2 = regs.rsi;
+    let arg3 = regs.rdx;
+    let arg4 = regs.r10;
+    let arg5 = regs.r8;
+    let arg6 = regs.r9;
+
+    let syscall_num = regs.rax;
 
     let ret = match syscall_num {
         SCHED_YIELD => sys_yield(),
         EXIT => sys_exit(arg1),
         WAIT4 => sys_wait4(arg1),
+        FORK => sys_fork(),
+        VFORK => sys_fork(),
 
         OPEN => sys_open(arg1, arg2, arg3),
         CLOSE => sys_close(arg1),
@@ -76,7 +81,7 @@ fn syscall_matcher(
         _ => -1,
     };
 
-    ret
+    regs.rax = ret as usize;
 }
 
 pub mod op;

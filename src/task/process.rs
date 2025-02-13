@@ -47,8 +47,6 @@ pub struct Process {
     pub name: String,
     pub page_table: OffsetPageTable<'static>,
     pub threads: Vec<SharedThread>,
-
-    pub ens: usize,
 }
 
 impl Process {
@@ -58,7 +56,6 @@ impl Process {
             name: String::from(name),
             page_table,
             threads: Vec::new(),
-            ens: 0,
         }
     }
 
