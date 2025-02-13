@@ -16,3 +16,6 @@ log = "0.4.25"
 spin = "0.9.8"
 uart_16550 = "0.3.2"
 x86_64 = "0.15.2"
+
+[dependencies.x2apic]
+path = "crates/x2apic-rs"
