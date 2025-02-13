@@ -1,9 +1,15 @@
 #![no_std]
 #![no_main]
 #![allow(unused_variables)]
+#![allow(unsafe_op_in_unsafe_fn)]
+#![feature(allocator_api)]
+
+extern crate alloc;
 
 #[unsafe(no_mangle)]
 extern "C" fn kmain() -> ! {
+    memory::init_heap();
+
     klog::init();
 
     log::info!("Reduct OS kernel starting...");
@@ -18,4 +24,5 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 }
 
 pub mod klog;
+pub mod memory;
 pub mod serial;
