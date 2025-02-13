@@ -6,6 +6,7 @@ use x86_64::structures::idt::InterruptStackFrame;
 use x86_64::structures::idt::PageFaultErrorCode;
 
 use crate::gdt::DOUBLE_FAULT_IST_INDEX;
+use crate::task::scheduler::SCHEDULER;
 use crate::task::timer::TIMER;
 
 const INTERRUPT_INDEX_OFFSET: u8 = 32;
@@ -51,13 +52,17 @@ pub static IDT: Lazy<InterruptDescriptorTable> = Lazy::new(|| {
 pub extern "x86-interrupt" fn timer_interrupt(_frame: InterruptStackFrame) {
     fn timer_handler(context: VirtAddr) -> VirtAddr {
         crate::acpi::apic::end_of_interrupt();
-        context
+        SCHEDULER.lock().schedule(context)
     }
 
     unsafe {
         core::arch::naked_asm!(
             "cli",
+            crate::push_context!(),
+            "mov rdi, rsp",
             "call {timer_handler}",
+            "mov rsp, rax",
+            crate::pop_context!(),
             "sti",
             "iretq",
             timer_handler = sym timer_handler,

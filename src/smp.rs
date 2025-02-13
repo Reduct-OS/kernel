@@ -76,13 +76,12 @@ unsafe extern "C" fn ap_entry(smp_info: &Cpu) -> ! {
     let timer_initial = CALIBRATED_TIMER_INITIAL.load(Ordering::SeqCst);
     LAPIC.lock().set_timer_initial(timer_initial);
 
-    log::debug!("Application Processor {} started", smp_info.id);
-
     syscall::init();
 
     while !SCHEDULER_INIT.load(Ordering::SeqCst) {
         core::hint::spin_loop();
     }
+    log::debug!("Application Processor {} started", smp_info.id);
 
     loop {
         x86_64::instructions::interrupts::enable_and_hlt();

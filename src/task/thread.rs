@@ -105,6 +105,7 @@ impl Thread {
             Selectors::get_user_segments(),
         );
         thread.context.rcx = self.context.rip;
+        thread.context.rax = 0;
 
         let thread = Arc::new(RwLock::new(thread));
         process.threads.push(thread.clone());

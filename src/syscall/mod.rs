@@ -42,6 +42,11 @@ extern "C" fn syscall_handler() {
     }
 }
 
+use self::op::*;
+use sc::nr::*;
+
+const SYS_PUT_STRING: usize = 10000;
+
 fn syscall_matcher(
     arg1: usize,
     arg2: usize,
@@ -50,5 +55,17 @@ fn syscall_matcher(
     arg5: usize,
     arg6: usize,
 ) -> isize {
-    0
+    let syscall_num: usize;
+    unsafe { core::arch::asm!("mov {0}, rax", out(reg) syscall_num) };
+
+    let ret = match syscall_num {
+        SCHED_YIELD => sys_yield(),
+        EXIT => sys_exit(arg1),
+        SYS_PUT_STRING => sys_putstring(arg1, arg2),
+        _ => -1,
+    };
+
+    ret
 }
+
+pub mod op;

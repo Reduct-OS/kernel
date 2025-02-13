@@ -1,7 +1,7 @@
 use good_memory_allocator::SpinLockedAllocator;
-use x86_64::VirtAddr;
+use x86_64::{PhysAddr, VirtAddr};
 
-use super::{KERNEL_PAGE_TABLE, MappingType, MemoryManager};
+use super::{KERNEL_PAGE_TABLE, MappingType, MemoryManager, convert_physical_to_virtual};
 
 pub const HEAP_START: usize = 0x114514000000;
 pub const HEAP_SIZE: usize = 8 * 1024 * 1024;
@@ -10,6 +10,12 @@ pub const HEAP_SIZE: usize = 8 * 1024 * 1024;
 pub static KERNEL_ALLOCATOR: SpinLockedAllocator = SpinLockedAllocator::empty();
 
 pub fn init_heap() {
+    let page_table_addr =
+        convert_physical_to_virtual(PhysAddr::new(unsafe { x86::controlregs::cr3() }));
+    for i in 0..2048 {
+        unsafe { *((page_table_addr + i).as_mut_ptr::<u8>()) = 0 };
+    }
+
     let heap_start = VirtAddr::new(HEAP_START as u64);
 
     MemoryManager::alloc_range(

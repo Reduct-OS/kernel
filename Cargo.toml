@@ -23,9 +23,8 @@ x86_64 = "0.15.2"
 [dependencies.x2apic]
 path = "crates/x2apic-rs"
 
-[dependencies.redox_syscall]
-version = "0.5.8"
-default-features = false
+[dependencies.sc]
+path = "crates/sc"
 
 [dependencies.object]
 version = "0.36.7"

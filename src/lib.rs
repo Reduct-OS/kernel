@@ -6,6 +6,7 @@
 #![feature(abi_x86_interrupt)]
 #![feature(allocator_api)]
 #![feature(ptr_internals)]
+#![feature(inherent_str_constructors)]
 #![feature(let_chains)]
 #![feature(naked_functions)]
 
@@ -32,6 +33,8 @@ extern "C" fn kmain() -> ! {
     syscall::init();
     task::init();
 
+    module::load_all_module();
+
     loop {
         x86_64::instructions::interrupts::enable_and_hlt();
     }
@@ -50,6 +53,7 @@ pub mod gdt;
 pub mod irq;
 pub mod klog;
 pub mod memory;
+pub mod module;
 pub mod serial;
 pub mod smp;
 pub mod syscall;
