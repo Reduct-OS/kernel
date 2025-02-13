@@ -17,6 +17,38 @@ static RSDP_REQUEST: RsdpRequest = RsdpRequest::new();
 pub static ACPI: Once<Box<Acpi>> = Once::new();
 pub static BUF: Once<Box<[u8]>> = Once::new();
 
+#[derive(Clone, Copy, Debug)]
+#[repr(C, packed)]
+pub struct Rsdp {
+    signature: [u8; 8],
+    checksum: u8,
+    oem_id: [u8; 6],
+    revision: u8,
+    rsdt_address: u32,
+
+    /*
+     * These fields are only valid for ACPI Version 2.0 and greater
+     */
+    length: u32,
+    xsdt_address: u64,
+    ext_checksum: u8,
+    reserved: [u8; 3],
+}
+
+#[derive(Copy, Clone, Debug)]
+#[repr(C, packed)]
+pub struct Sdt {
+    pub signature: [u8; 4],
+    pub length: u32,
+    pub revision: u8,
+    pub checksum: u8,
+    pub oem_id: [u8; 6],
+    pub oem_table_id: [u8; 8],
+    pub oem_revision: u32,
+    pub creator_id: u32,
+    pub creator_revision: u32,
+}
+
 pub fn init() {
     let response = RSDP_REQUEST.get_response().unwrap();
 
@@ -44,6 +76,31 @@ pub fn init() {
     let acpi = Acpi { apic, hpet_info };
 
     ACPI.call_once(|| Box::new(acpi));
+
+    log::info!("Ready to set acpi user buffer");
+
+    let rsdp = &unsafe { *(response.address() as *const Rsdp) };
+    let sdt_addr: usize;
+    let sdt: Sdt;
+    if rsdp.xsdt_address != 0 {
+        sdt_addr =
+            convert_physical_to_virtual(PhysAddr::new(rsdp.xsdt_address as u64)).as_u64() as usize;
+
+        sdt = unsafe {
+            *convert_physical_to_virtual(PhysAddr::new(rsdp.xsdt_address as u64)).as_ptr::<Sdt>()
+        };
+    } else {
+        sdt_addr =
+            convert_physical_to_virtual(PhysAddr::new(rsdp.rsdt_address as u64)).as_u64() as usize;
+        sdt = unsafe {
+            *convert_physical_to_virtual(PhysAddr::new(rsdp.rsdt_address as u64)).as_ptr::<Sdt>()
+        };
+    }
+    BUF.call_once(|| {
+        Box::from(unsafe {
+            core::slice::from_raw_parts(sdt_addr as *const u8, sdt.length as usize)
+        })
+    });
 }
 
 pub struct Acpi<'a> {

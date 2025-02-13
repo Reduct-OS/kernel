@@ -23,7 +23,7 @@ pub static KERNEL_PROCESS: Lazy<SharedProcess> = Lazy::new(|| {
     process
 });
 
-static PROCESSES: RwLock<Vec<SharedProcess>> = RwLock::new(Vec::new());
+pub static PROCESSES: RwLock<Vec<SharedProcess>> = RwLock::new(Vec::new());
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ProcessId(pub u64);
@@ -35,12 +35,20 @@ impl ProcessId {
     }
 }
 
+impl From<u64> for ProcessId {
+    fn from(value: u64) -> Self {
+        ProcessId(value)
+    }
+}
+
 #[allow(dead_code)]
 pub struct Process {
     pub id: ProcessId,
     pub name: String,
     pub page_table: OffsetPageTable<'static>,
     pub threads: Vec<SharedThread>,
+
+    pub ens: usize,
 }
 
 impl Process {
@@ -50,6 +58,7 @@ impl Process {
             name: String::from(name),
             page_table,
             threads: Vec::new(),
+            ens: 0,
         }
     }
 
@@ -70,6 +79,7 @@ impl Process {
 
         let process = Arc::new(RwLock::new(Self::new(name, page_table)));
         Thread::new_user_thread(Arc::downgrade(&process), binary.entry() as usize);
+        crate::fs::operation::init_file_descriptor_manager(process.read().id);
         PROCESSES.write().push(process.clone());
     }
 }

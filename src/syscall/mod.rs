@@ -46,6 +46,7 @@ use self::op::*;
 use sc::nr::*;
 
 const SYS_PUT_STRING: usize = 10000;
+const SYS_MALLOC: usize = 10001;
 
 fn syscall_matcher(
     arg1: usize,
@@ -61,7 +62,17 @@ fn syscall_matcher(
     let ret = match syscall_num {
         SCHED_YIELD => sys_yield(),
         EXIT => sys_exit(arg1),
+        WAIT4 => sys_wait4(arg1),
+
+        OPEN => sys_open(arg1, arg2, arg3),
+        CLOSE => sys_close(arg1),
+        READ => sys_read(arg1, arg2, arg3),
+        WRITE => sys_write(arg1, arg2, arg3),
+        LSEEK => sys_lseek(arg1, arg2),
+        FSTAT => sys_fstat(arg1, arg2),
+
         SYS_PUT_STRING => sys_putstring(arg1, arg2),
+        SYS_MALLOC => sys_malloc(arg1, arg2),
         _ => -1,
     };
 
