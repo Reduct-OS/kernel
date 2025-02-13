@@ -1,20 +1,18 @@
 use alloc::{string::String, sync::Arc, vec::Vec};
-use spin::RwLock;
-
-use crate::ref_to_mut;
+use spin::{Mutex, RwLock};
 
 use super::inode::{Inode, InodeRef};
 
 pub struct PipeFS {
     path: String,
-    buffer: Vec<u8>,
+    buffer: Arc<Mutex<Vec<u8>>>,
 }
 
 impl PipeFS {
     pub fn new() -> InodeRef {
         let inode = Arc::new(RwLock::new(Self {
             path: String::new(),
-            buffer: Vec::new(),
+            buffer: Arc::new(Mutex::new(Vec::new())),
         }));
         inode
     }
@@ -36,25 +34,20 @@ impl Inode for PipeFS {
         super::inode::InodeTy::File
     }
 
-    fn read_at(&self, offset: usize, buf: &mut [u8]) -> usize {
-        let mut idx: usize = 0;
-
-        for (i, &byte) in self.buffer.iter().enumerate() {
-            if (i + offset) > self.buffer.len() {
-                break;
-            }
-            idx = i;
-            buf[idx + offset] = byte;
+    fn read_at(&self, _offset: usize, buf: &mut [u8]) -> usize {
+        while self.buffer.lock().is_empty() {
+            crate::syscall::op::sys_yield();
         }
-
-        idx
+        buf.copy_from_slice(self.buffer.lock().as_slice());
+        self.buffer.lock().clear();
+        buf.len()
     }
 
     fn write_at(&self, _offset: usize, buf: &[u8]) -> usize {
         for &byte in buf {
-            ref_to_mut(self).buffer.push(byte);
+            self.buffer.lock().push(0);
         }
 
-        buf.len()
+        self.buffer.lock().len()
     }
 }

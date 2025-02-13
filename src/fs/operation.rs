@@ -19,7 +19,8 @@ use spin::Mutex;
 use crate::task::get_current_process_id;
 
 use super::{
-    ROOT,
+    PATH_TO_PID, ROOT,
+    user::UserFS,
     vfs::{
         inode::{FileInfo, InodeRef, InodeTy},
         stat_struct::Stat,
@@ -183,6 +184,12 @@ pub fn pipe(fd: &mut [FileDescriptor]) -> Option<usize> {
 
 pub fn open(path: String, open_mode: OpenMode) -> Option<usize> {
     let current_file_descriptor_manager = get_file_descriptor_manager()?;
+
+    if let Some(&pid) = PATH_TO_PID.lock().get(&path) {
+        let inode = UserFS::new(pid);
+        let file_descriptor = current_file_descriptor_manager.add_inode(inode.clone(), open_mode);
+        return Some(file_descriptor);
+    }
 
     let inode = if path.starts_with("/") {
         get_inode_by_path(path.clone())?

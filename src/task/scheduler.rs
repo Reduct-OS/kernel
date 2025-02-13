@@ -1,10 +1,11 @@
 use alloc::collections::{BTreeMap, VecDeque};
-use alloc::sync::Weak;
+use alloc::sync::{Arc, Weak};
 use core::sync::atomic::{AtomicBool, Ordering};
 use spin::{Lazy, Mutex};
 use x86_64::VirtAddr;
 
 use super::context::Context;
+use super::process::{PROCESSES, ProcessId, WeakSharedProcess};
 use super::thread::{Thread, WeakSharedThread};
 use crate::acpi::apic::LAPIC;
 use crate::smp::CPUS;
@@ -42,6 +43,13 @@ impl Scheduler {
     #[inline]
     pub fn add(&mut self, thread: WeakSharedThread) {
         self.ready_threads.push_back(thread);
+    }
+
+    #[inline]
+    pub fn find(&self, pid: ProcessId) -> Option<WeakSharedProcess> {
+        Some(Arc::downgrade(
+            PROCESSES.read().iter().find(|p| p.read().id == pid)?,
+        ))
     }
 
     #[inline]

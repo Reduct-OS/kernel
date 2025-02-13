@@ -21,7 +21,7 @@ pub fn init_heap() {
     MemoryManager::alloc_range(
         heap_start,
         HEAP_SIZE as u64,
-        MappingType::KernelData.flags(),
+        MappingType::UserData.flags(),
         &mut KERNEL_PAGE_TABLE.lock(),
     )
     .unwrap();

@@ -1,4 +1,7 @@
-use alloc::string::ToString;
+use alloc::{
+    collections::btree_map::BTreeMap,
+    string::{String, ToString},
+};
 use spin::{Lazy, Mutex};
 use vfs::{
     acpi::AcpiFS,
@@ -6,10 +9,16 @@ use vfs::{
     root::RootFS,
 };
 
+use crate::task::process::ProcessId;
+
 pub mod operation;
+pub mod user;
 pub mod vfs;
 
 pub static ROOT: Lazy<Mutex<InodeRef>> = Lazy::new(|| Mutex::new(RootFS::new()));
+
+pub static USER_FS_MANAGER: Mutex<BTreeMap<ProcessId, usize>> = Mutex::new(BTreeMap::new());
+pub static PATH_TO_PID: Mutex<BTreeMap<String, ProcessId>> = Mutex::new(BTreeMap::new());
 
 pub fn init() {
     ROOT.lock().write().when_mounted("/".to_string(), None);

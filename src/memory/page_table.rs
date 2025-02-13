@@ -12,6 +12,7 @@ use super::{BitmapFrameAllocator, PHYSICAL_MEMORY_OFFSET, convert_physical_to_vi
 pub trait ExtendedPageTable {
     fn physical_address(&self) -> PhysAddr;
     fn write_to_mapped_address(&self, buffer: &[u8], address: VirtAddr);
+    fn read_mapped_address(&self, buffer: &mut [u8], address: VirtAddr);
     unsafe fn deep_copy(&self) -> OffsetPageTable<'static>;
     unsafe fn free_user_page_table(&self);
 }
@@ -30,6 +31,17 @@ impl ExtendedPageTable for OffsetPageTable<'_> {
                 .expect("Failed to translate address!");
             let virtual_address = convert_physical_to_virtual(physical_address).as_u64();
             unsafe { (virtual_address as *mut u8).write(byte) }
+        }
+    }
+
+    fn read_mapped_address(&self, buffer: &mut [u8], address: VirtAddr) {
+        for offset in 0..buffer.len() {
+            let address = address + offset as u64;
+            let physical_address = self
+                .translate_addr(address)
+                .expect("Failed to translate address!");
+            let virtual_address = convert_physical_to_virtual(physical_address).as_u64();
+            buffer[offset] = unsafe { (virtual_address as *mut u8).read() }
         }
     }
 

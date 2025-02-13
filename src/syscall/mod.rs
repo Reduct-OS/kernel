@@ -51,6 +51,8 @@ use sc::nr::*;
 
 const SYS_PUT_STRING: usize = 10000;
 const SYS_MALLOC: usize = 10001;
+const SYS_PHYSMAP: usize = 10002;
+const SYS_REGISTEFS: usize = 10003;
 
 fn syscall_matcher(regs: &mut Context) {
     let arg1 = regs.rdi;
@@ -79,6 +81,9 @@ fn syscall_matcher(regs: &mut Context) {
 
         SYS_PUT_STRING => sys_putstring(arg1, arg2),
         SYS_MALLOC => sys_malloc(arg1, arg2),
+        SYS_PHYSMAP => sys_physmap(arg1, arg2, arg3),
+        SYS_REGISTEFS => sys_registfs(arg1, arg2, arg3),
+
         _ => -1,
     };
 

@@ -1,14 +1,17 @@
 use alloc::{string::ToString, sync::Arc};
-use x86_64::VirtAddr;
+use x86_64::{
+    PhysAddr, VirtAddr,
+    structures::paging::{PhysFrame, Size4KiB},
+};
 
 use crate::{
-    fs::operation::OpenMode,
+    fs::{PATH_TO_PID, USER_FS_MANAGER, operation::OpenMode},
     irq::InterruptIndex,
     memory::{MappingType, MemoryManager, ref_current_page_table},
     serial_print,
     task::{
         context::Context,
-        get_current_thread,
+        get_current_process_id, get_current_thread,
         process::{PROCESSES, ProcessId},
         scheduler::SCHEDULER,
     },
@@ -86,6 +89,37 @@ pub fn sys_malloc(addr: usize, len: usize) -> isize {
     0
 }
 
+pub fn sys_physmap(vaddr: usize, paddr: usize, size: usize) -> isize {
+    if MemoryManager::map_range_to(
+        VirtAddr::new(vaddr as u64),
+        PhysFrame::<Size4KiB>::containing_address(PhysAddr::new(paddr as u64)),
+        size as u64,
+        MappingType::UserData.flags(),
+        &mut ref_current_page_table(),
+    )
+    .is_ok()
+    {
+        return size as isize;
+    }
+
+    -1
+}
+
+pub fn sys_registfs(fs_name_ptr: usize, fs_name_len: usize, fs_addr: usize) -> isize {
+    let path = str::from_utf8(unsafe {
+        core::slice::from_raw_parts(fs_name_ptr as *const u8, fs_name_len)
+    })
+    .ok();
+
+    if let Some(path) = path {
+        let pid = get_current_process_id();
+        USER_FS_MANAGER.lock().insert(pid, fs_addr);
+        PATH_TO_PID.lock().insert(path.to_string(), pid);
+    }
+
+    0
+}
+
 pub fn sys_pipe(fd: usize) -> isize {
     let fd = unsafe { core::slice::from_raw_parts_mut(fd as *mut usize, 2) };
 
@@ -107,7 +141,7 @@ pub fn sys_open(path: usize, mode: usize, len: usize) -> isize {
         }
     }
 
-    -1
+    usize::MAX as isize
 }
 
 pub fn sys_close(fd: usize) -> isize {
