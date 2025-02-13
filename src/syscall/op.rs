@@ -7,6 +7,7 @@ use crate::{
     memory::{MappingType, MemoryManager, ref_current_page_table},
     serial_print,
     task::{
+        context::Context,
         get_current_thread,
         process::{PROCESSES, ProcessId},
         scheduler::SCHEDULER,
@@ -85,6 +86,16 @@ pub fn sys_malloc(addr: usize, len: usize) -> isize {
     0
 }
 
+pub fn sys_pipe(fd: usize) -> isize {
+    let fd = unsafe { core::slice::from_raw_parts_mut(fd as *mut usize, 2) };
+
+    if let Some(ret) = crate::fs::operation::pipe(fd) {
+        return ret as isize;
+    }
+
+    -1
+}
+
 pub fn sys_open(path: usize, mode: usize, len: usize) -> isize {
     let openmode = OpenMode::from(mode);
 
@@ -133,7 +144,7 @@ pub fn sys_fstat(fd: usize, buf: usize) -> isize {
     0
 }
 
-pub fn sys_fork() -> isize {
+pub fn sys_fork(regs: &mut Context) -> isize {
     let current_thread = get_current_thread();
-    current_thread.read().fork_thread()
+    current_thread.read().fork_thread(regs)
 }

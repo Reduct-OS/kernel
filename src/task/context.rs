@@ -49,10 +49,6 @@ impl Context {
         self.cs = code_selector.0 as usize;
         self.ss = data_selector.0 as usize;
     }
-
-    pub fn copy_from(&mut self, other: Self) {
-        *self = other;
-    }
 }
 
 impl Context {

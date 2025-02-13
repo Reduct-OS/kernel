@@ -66,8 +66,8 @@ fn syscall_matcher(regs: &mut Context) {
         SCHED_YIELD => sys_yield(),
         EXIT => sys_exit(arg1),
         WAIT4 => sys_wait4(arg1),
-        FORK => sys_fork(),
-        VFORK => sys_fork(),
+        FORK => sys_fork(regs),
+        VFORK => sys_fork(regs),
 
         OPEN => sys_open(arg1, arg2, arg3),
         CLOSE => sys_close(arg1),
@@ -75,6 +75,7 @@ fn syscall_matcher(regs: &mut Context) {
         WRITE => sys_write(arg1, arg2, arg3),
         LSEEK => sys_lseek(arg1, arg2),
         FSTAT => sys_fstat(arg1, arg2),
+        PIPE => sys_pipe(arg1),
 
         SYS_PUT_STRING => sys_putstring(arg1, arg2),
         SYS_MALLOC => sys_malloc(arg1, arg2),

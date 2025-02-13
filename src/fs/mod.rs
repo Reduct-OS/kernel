@@ -19,4 +19,7 @@ pub fn init() {
 
     let acpi_fs = AcpiFS::new();
     mount_to(acpi_fs.clone(), dev_fs.clone(), "kernel.acpi".to_string());
+
+    let pipe_fs = RootFS::new();
+    mount_to(pipe_fs.clone(), ROOT.lock().clone(), "pipe".to_string());
 }

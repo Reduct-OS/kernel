@@ -10,12 +10,6 @@ use super::stack::{KernelStack, UserStack};
 use crate::gdt::Selectors;
 use crate::memory::{ExtendedPageTable, KERNEL_PAGE_TABLE, ref_current_page_table};
 
-core::arch::global_asm!(include_str!("../syscall/syscall.S"));
-
-unsafe extern "C" {
-    fn ret_from_syscall();
-}
-
 pub(super) type SharedThread = Arc<RwLock<Thread>>;
 pub(super) type WeakSharedThread = Weak<RwLock<Thread>>;
 
@@ -90,31 +84,34 @@ impl Thread {
         SCHEDULER.lock().add(Arc::downgrade(&thread));
     }
 
-    pub fn fork_thread(&self) -> isize {
+    pub fn fork_thread(&self, regs: &mut Context) -> isize {
         let current_process = Arc::new(RwLock::new(super::process::Process::new(
             &self.process.upgrade().unwrap().read().name,
             ref_current_page_table(),
         )));
 
+        crate::fs::operation::init_file_descriptor_manager_for_fork(current_process.read().id);
+
         let mut thread = Self::new(Arc::downgrade(&current_process));
         let mut process = current_process.write();
 
-        thread.context.copy_from(self.context);
-        thread.context.init(
-            ret_from_syscall as usize,
-            UserStack::end_address(),
-            process.page_table.physical_address(),
-            Selectors::get_kernel_segments(),
-        );
-        thread.context.rsp = thread.context.address().as_u64() as usize;
-        thread.context.rcx = self.context.rip;
+        thread.context = Context::from_address(regs.address());
+
+        thread.context.rip = regs.rcx;
+        thread.context.cs = self.context.cs;
+        thread.context.rflags = regs.r11;
+        thread.context.rsp = regs as *mut Context as usize;
+        thread.context.ss = self.context.ss;
+
         thread.context.rax = 0;
 
         let thread = Arc::new(RwLock::new(thread));
         process.threads.push(thread.clone());
 
-        PROCESSES.write().push(current_process.clone());
+        drop(process);
+
         SCHEDULER.lock().add(Arc::downgrade(&thread));
+        PROCESSES.write().push(current_process.clone());
 
         return current_process.read().id.0 as isize;
     }

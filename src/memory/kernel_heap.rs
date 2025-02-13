@@ -3,8 +3,8 @@ use x86_64::{PhysAddr, VirtAddr};
 
 use super::{KERNEL_PAGE_TABLE, MappingType, MemoryManager, convert_physical_to_virtual};
 
-pub const HEAP_START: usize = 0x114514000000;
-pub const HEAP_SIZE: usize = 64 * 1024 * 1024;
+pub const HEAP_START: usize = 0xFFFF_A000_0000_0000;
+pub const HEAP_SIZE: usize = 128 * 1024 * 1024;
 
 #[global_allocator]
 pub static KERNEL_ALLOCATOR: SpinLockedAllocator = SpinLockedAllocator::empty();

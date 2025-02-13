@@ -3,8 +3,17 @@ use core::{
     usize,
 };
 
-use crate::{ref_to_mut, task::process::ProcessId};
-use alloc::{collections::BTreeMap, string::String, sync::Arc, vec::Vec};
+use crate::{
+    fs::vfs::{inode::mount_to, pipe::PipeFS},
+    ref_to_mut,
+    task::process::ProcessId,
+};
+use alloc::{
+    collections::BTreeMap,
+    string::{String, ToString},
+    sync::Arc,
+    vec::Vec,
+};
 use spin::Mutex;
 
 use crate::task::get_current_process_id;
@@ -92,6 +101,13 @@ pub fn init_file_descriptor_manager(pid: ProcessId) {
     file_descriptor_managers.insert(pid, Arc::new(FileDescriptorManager::new(BTreeMap::new())));
 }
 
+pub fn init_file_descriptor_manager_for_fork(this: ProcessId) {
+    let parent_file_descriptor_manager = get_file_descriptor_manager().unwrap();
+    FILE_DESCRIPTOR_MANAGERS
+        .lock()
+        .insert(this, parent_file_descriptor_manager.clone());
+}
+
 pub fn init_file_descriptor_manager_with_stdin_stdout(
     pid: ProcessId,
     stdin: InodeRef,
@@ -139,6 +155,30 @@ pub fn get_inode_by_fd(file_descriptor: usize) -> Option<InodeRef> {
         .get(&file_descriptor)?;
 
     Some(inode.clone())
+}
+
+pub fn pipe(fd: &mut [FileDescriptor]) -> Option<usize> {
+    assert_eq!(fd.len(), 2);
+
+    let current_file_descriptor_manager = get_file_descriptor_manager()?;
+
+    let pipe_inode = PipeFS::new();
+    let pipe_fs_inode = kernel_open("/pipe".to_string())?;
+    mount_to(
+        pipe_inode.clone(),
+        pipe_fs_inode.clone(),
+        alloc::format!("pipe{}", get_current_process_id().0),
+    );
+
+    let read_descriptor =
+        current_file_descriptor_manager.add_inode(pipe_inode.clone(), OpenMode::Read);
+    let write_descriptor =
+        current_file_descriptor_manager.add_inode(pipe_inode.clone(), OpenMode::Write);
+
+    fd[0] = read_descriptor;
+    fd[1] = write_descriptor;
+
+    return Some(0);
 }
 
 pub fn open(path: String, open_mode: OpenMode) -> Option<usize> {
