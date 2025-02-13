@@ -6,6 +6,7 @@ use x86_64::structures::idt::InterruptStackFrame;
 use x86_64::structures::idt::PageFaultErrorCode;
 
 use crate::gdt::DOUBLE_FAULT_IST_INDEX;
+use crate::task::timer::TIMER;
 
 const INTERRUPT_INDEX_OFFSET: u8 = 32;
 
@@ -76,6 +77,7 @@ extern "x86-interrupt" fn spurious_interrupt(_frame: InterruptStackFrame) {
 
 extern "x86-interrupt" fn hpet_timer_interrupt(_frame: InterruptStackFrame) {
     crate::acpi::apic::end_of_interrupt();
+    TIMER.lock().wakeup();
 }
 
 extern "x86-interrupt" fn segment_not_present(frame: InterruptStackFrame, error_code: u64) {

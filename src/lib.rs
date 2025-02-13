@@ -1,9 +1,12 @@
 #![no_std]
 #![no_main]
+#![allow(internal_features)]
 #![allow(unused_variables)]
 #![allow(unsafe_op_in_unsafe_fn)]
 #![feature(abi_x86_interrupt)]
 #![feature(allocator_api)]
+#![feature(ptr_internals)]
+#![feature(let_chains)]
 #![feature(naked_functions)]
 
 use smp::BSP_LAPIC_ID;
@@ -26,6 +29,9 @@ extern "C" fn kmain() -> ! {
 
     acpi::apic::init();
 
+    syscall::init();
+    task::init();
+
     loop {
         x86_64::instructions::interrupts::enable_and_hlt();
     }
@@ -46,3 +52,5 @@ pub mod klog;
 pub mod memory;
 pub mod serial;
 pub mod smp;
+pub mod syscall;
+pub mod task;

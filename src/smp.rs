@@ -7,6 +7,8 @@ use spin::{Lazy, RwLock};
 use crate::{
     acpi::apic::{APIC_INIT, CALIBRATED_TIMER_INITIAL, LAPIC},
     irq::IDT,
+    syscall,
+    task::scheduler::SCHEDULER_INIT,
 };
 
 use super::gdt::CpuInfo;
@@ -75,6 +77,12 @@ unsafe extern "C" fn ap_entry(smp_info: &Cpu) -> ! {
     LAPIC.lock().set_timer_initial(timer_initial);
 
     log::debug!("Application Processor {} started", smp_info.id);
+
+    syscall::init();
+
+    while !SCHEDULER_INIT.load(Ordering::SeqCst) {
+        core::hint::spin_loop();
+    }
 
     loop {
         x86_64::instructions::interrupts::enable_and_hlt();

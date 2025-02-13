@@ -7,7 +7,7 @@ pub const HEAP_START: usize = 0x114514000000;
 pub const HEAP_SIZE: usize = 8 * 1024 * 1024;
 
 #[global_allocator]
-static ALLOCATOR: SpinLockedAllocator = SpinLockedAllocator::empty();
+pub static KERNEL_ALLOCATOR: SpinLockedAllocator = SpinLockedAllocator::empty();
 
 pub fn init_heap() {
     let heap_start = VirtAddr::new(HEAP_START as u64);
@@ -21,6 +21,6 @@ pub fn init_heap() {
     .unwrap();
 
     unsafe {
-        ALLOCATOR.init(HEAP_START, HEAP_SIZE);
+        KERNEL_ALLOCATOR.init(HEAP_START, HEAP_SIZE);
     }
 }
