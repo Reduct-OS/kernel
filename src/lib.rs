@@ -32,12 +32,12 @@ extern "C" fn kmain() -> ! {
     acpi::apic::init();
 
     syscall::init();
-    task::init();
 
     fs::init();
 
     module::load_all_module();
 
+    task::init();
     loop {
         x86_64::instructions::interrupts::enable_and_hlt();
     }

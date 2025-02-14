@@ -38,7 +38,6 @@ impl Inode for AcpiFS {
 
     fn size(&self) -> usize {
         let data = BUF.get().unwrap();
-
         data.len()
     }
 
