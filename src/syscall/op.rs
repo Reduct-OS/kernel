@@ -122,6 +122,19 @@ pub fn sys_registfs(fs_name_ptr: usize, fs_name_len: usize, fs_addr: usize) -> i
     0
 }
 
+pub fn sys_load_driver(driver_name_ptr: usize, driver_name_len: usize) -> isize {
+    let path = str::from_utf8(unsafe {
+        core::slice::from_raw_parts(driver_name_ptr as *const u8, driver_name_len)
+    })
+    .ok();
+
+    if let Some(path) = path {
+        crate::module::load_named_module(path);
+    }
+
+    0
+}
+
 pub fn sys_pipe(fd: usize) -> isize {
     let fd = unsafe { core::slice::from_raw_parts_mut(fd as *mut usize, 2) };
 

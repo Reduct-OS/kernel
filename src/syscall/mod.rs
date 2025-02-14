@@ -56,6 +56,7 @@ const SYS_REGISTEFS: usize = 10003;
 const SYS_LISTDIR: usize = 10004;
 const SYS_FREE: usize = 10005;
 const SYS_DIR_ITEMNUM: usize = 10006;
+const SYS_LOAD_DRIVER: usize = 10007;
 
 fn syscall_matcher(regs: &mut Context) {
     let arg1 = regs.rdi;
@@ -89,6 +90,7 @@ fn syscall_matcher(regs: &mut Context) {
         SYS_LISTDIR => sys_listdir(arg1, arg2),
         SYS_FREE => sys_free(arg1, arg2, arg3),
         SYS_DIR_ITEMNUM => sys_dir_itemnum(arg1),
+        SYS_LOAD_DRIVER => sys_load_driver(arg1, arg2),
 
         _ => -1,
     };
