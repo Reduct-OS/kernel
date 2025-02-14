@@ -107,6 +107,16 @@ pub fn sys_physmap(vaddr: usize, paddr: usize, size: usize) -> isize {
     -1
 }
 
+pub fn sys_alloc_dma(size: usize) -> isize {
+    let (phys, virt) = crate::memory::DmaManager::allocate(size);
+    phys.as_u64() as isize
+}
+
+pub fn sys_dealloc_dma(addr: usize) -> isize {
+    crate::memory::DmaManager::deallocate(VirtAddr::new(addr as u64));
+    0
+}
+
 pub fn sys_registfs(fs_name_ptr: usize, fs_name_len: usize, fs_addr: usize) -> isize {
     let path = str::from_utf8(unsafe {
         core::slice::from_raw_parts(fs_name_ptr as *const u8, fs_name_len)
@@ -184,6 +194,10 @@ pub fn sys_lseek(fd: usize, offset: usize) -> isize {
         return -1;
     }
     offset as isize
+}
+
+pub fn sys_ioctl(fd: usize, cmd: usize, arg: usize) -> isize {
+    return crate::fs::operation::ioctl(fd, cmd, arg) as isize;
 }
 
 pub fn sys_fstat(fd: usize, buf: usize) -> isize {

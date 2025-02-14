@@ -5,7 +5,7 @@ use limine::{modules::InternalModule, request::ModuleRequest};
 static MODULE_REQUEST: ModuleRequest = ModuleRequest::new().with_internal_modules(&[
     &InternalModule::new().with_path(limine::cstr!("/drv/acpid")),
     &InternalModule::new().with_path(limine::cstr!("/drv/pcid")),
-    &InternalModule::new().with_path(limine::cstr!("/drv/ahcid")),
+    &InternalModule::new().with_path(limine::cstr!("/drv/nvmed")),
 ]);
 
 fn load_module(module: &&limine::file::File) {

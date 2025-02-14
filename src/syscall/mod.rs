@@ -57,6 +57,8 @@ const SYS_LISTDIR: usize = 10004;
 const SYS_FREE: usize = 10005;
 const SYS_DIR_ITEMNUM: usize = 10006;
 const SYS_LOAD_DRIVER: usize = 10007;
+const SYS_DMA_ALLOCATE: usize = 10008;
+const SYS_DMA_DEALLOCATE: usize = 10009;
 
 fn syscall_matcher(regs: &mut Context) {
     let arg1 = regs.rdi;
@@ -82,6 +84,7 @@ fn syscall_matcher(regs: &mut Context) {
         LSEEK => sys_lseek(arg1, arg2),
         FSTAT => sys_fstat(arg1, arg2),
         PIPE => sys_pipe(arg1),
+        IOCTL => sys_ioctl(arg1, arg2, arg3),
 
         SYS_PUT_STRING => sys_putstring(arg1, arg2),
         SYS_MALLOC => sys_malloc(arg1, arg2),
@@ -91,6 +94,8 @@ fn syscall_matcher(regs: &mut Context) {
         SYS_FREE => sys_free(arg1, arg2, arg3),
         SYS_DIR_ITEMNUM => sys_dir_itemnum(arg1),
         SYS_LOAD_DRIVER => sys_load_driver(arg1, arg2),
+        SYS_DMA_ALLOCATE => sys_alloc_dma(arg1),
+        SYS_DMA_DEALLOCATE => sys_dealloc_dma(arg1),
 
         _ => -1,
     };

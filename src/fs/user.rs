@@ -76,6 +76,7 @@ const USER_WRITE: usize = 2;
 const USER_OPEN: usize = 3;
 const USER_SIZE: usize = 4;
 const USER_LIST: usize = 5;
+const USER_IOCTL: usize = 6;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct RetVecStruct {
@@ -350,5 +351,48 @@ impl Inode for UserFS {
 
     fn inode_type(&self) -> InodeTy {
         InodeTy::Dir
+    }
+
+    fn ioctl(&self, cmd: usize, arg: usize) -> usize {
+        let user_fs_manager = USER_FS_MANAGER.lock();
+        let fs_addr = user_fs_manager.get(&self.pid);
+        if let Some(&fs_addr) = fs_addr {
+            let mut buffer = alloc::vec![cmd, arg];
+            let mut command =
+                UserCommand::new(USER_IOCTL, 0, buffer.as_mut_ptr() as usize, buffer.len());
+
+            let process = SCHEDULER.lock().find(self.pid);
+            if let Some(process) = process {
+                let process = process.upgrade().unwrap();
+                let proc_page_table = &process.read().page_table;
+                proc_page_table.write_to_mapped_address(&command, VirtAddr::new(fs_addr as u64));
+
+                let ok_signal: &mut [usize; 1] = &mut [0; 1];
+
+                while ok_signal[0] == 0 {
+                    proc_page_table.read_mapped_address(
+                        unsafe {
+                            core::slice::from_raw_parts_mut(
+                                ok_signal.as_mut_ptr() as *mut u8,
+                                ok_signal.len() * size_of::<usize>(),
+                            )
+                        },
+                        VirtAddr::new(
+                            fs_addr as u64 + core::mem::offset_of!(UserCommand, ok_signal) as u64,
+                        ),
+                    );
+
+                    crate::syscall::op::sys_yield();
+                }
+
+                proc_page_table.read_mapped_address(&mut command, VirtAddr::new(fs_addr as u64));
+            }
+
+            drop(buffer);
+
+            return command.ret_val as usize;
+        }
+
+        usize::MAX
     }
 }
