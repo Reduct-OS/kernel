@@ -7,7 +7,7 @@ use x86_64::{
 use crate::{
     fs::{PATH_TO_PID, USER_FS_MANAGER, operation::OpenMode},
     irq::InterruptIndex,
-    memory::{MappingType, MemoryManager, ref_current_page_table},
+    memory::{MappingType, MemoryManager, ref_current_page_table, write_for_syscall},
     serial_print,
     task::{
         context::Context,
@@ -74,16 +74,18 @@ pub fn sys_wait4(pid: usize) -> isize {
     pid as isize
 }
 
-pub fn sys_malloc(addr: usize, len: usize) -> isize {
-    if MemoryManager::alloc_range(
-        VirtAddr::new(addr as u64),
-        len as u64,
-        MappingType::UserData.flags(),
-        &mut ref_current_page_table(),
-    )
-    .is_err()
-    {
-        return -1;
+pub fn sys_malloc(len: usize, align: usize) -> isize {
+    unsafe {
+        alloc::alloc::alloc(core::alloc::Layout::from_size_align_unchecked(len, align)) as isize
+    }
+}
+
+pub fn sys_free(addr: usize, len: usize, align: usize) -> isize {
+    unsafe {
+        alloc::alloc::dealloc(
+            addr as *mut u8,
+            core::alloc::Layout::from_size_align_unchecked(len, align),
+        );
     }
 
     0
@@ -176,6 +178,18 @@ pub fn sys_fstat(fd: usize, buf: usize) -> isize {
         return -1;
     }
     0
+}
+
+pub fn sys_listdir(fd: usize, buf_addr: usize) -> isize {
+    let vec = crate::fs::operation::list_dir(fd);
+
+    write_for_syscall(VirtAddr::new(buf_addr as u64), vec.as_slice());
+
+    0
+}
+
+pub fn sys_dir_itemnum(fd: usize) -> isize {
+    crate::fs::operation::list_dir(fd).len() as isize
 }
 
 pub fn sys_fork(regs: &mut Context) -> isize {

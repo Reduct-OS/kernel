@@ -14,20 +14,21 @@ pub enum MappingType {
     UserData,
 }
 
-#[rustfmt::skip]
 impl MappingType {
     pub fn flags(&self) -> PageTableFlags {
         match self {
-            Self::UserCode => PageTableFlags::PRESENT
-                | PageTableFlags::WRITABLE
-                | PageTableFlags::USER_ACCESSIBLE,
-            Self::KernelData => PageTableFlags::PRESENT
-                | PageTableFlags::WRITABLE
-                | PageTableFlags::NO_EXECUTE,
-            Self::UserData => PageTableFlags::PRESENT
-                | PageTableFlags::WRITABLE
-                | PageTableFlags::USER_ACCESSIBLE
-                | PageTableFlags::NO_EXECUTE,
+            Self::UserCode => {
+                PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::USER_ACCESSIBLE
+            }
+            Self::KernelData => {
+                PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::NO_EXECUTE
+            }
+            Self::UserData => {
+                PageTableFlags::PRESENT
+                    | PageTableFlags::WRITABLE
+                    | PageTableFlags::USER_ACCESSIBLE
+                    | PageTableFlags::NO_EXECUTE
+            }
         }
     }
 }

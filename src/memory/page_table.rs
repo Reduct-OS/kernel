@@ -140,3 +140,14 @@ unsafe fn free_from_recursion(
 
     frame_allocator.deallocate_frame(PhysFrame::containing_address(physical_address));
 }
+
+/// In syscall, we don't need to worry about page tables, because we are using the user page table.
+/// Use this function instead of `write` in syscall.
+pub fn write_for_syscall<T: Clone>(addr: VirtAddr, buf: &[T]) {
+    let reffer: *mut T = addr.as_mut_ptr();
+    for (idx, byte) in buf.iter().enumerate() {
+        unsafe {
+            reffer.add(idx).write(byte.clone());
+        }
+    }
+}

@@ -9,6 +9,7 @@
 #![feature(inherent_str_constructors)]
 #![feature(let_chains)]
 #![feature(naked_functions)]
+#![feature(vec_into_raw_parts)]
 
 use smp::BSP_LAPIC_ID;
 

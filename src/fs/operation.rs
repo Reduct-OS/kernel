@@ -185,10 +185,20 @@ pub fn pipe(fd: &mut [FileDescriptor]) -> Option<usize> {
 pub fn open(path: String, open_mode: OpenMode) -> Option<usize> {
     let current_file_descriptor_manager = get_file_descriptor_manager()?;
 
-    if let Some(&pid) = PATH_TO_PID.lock().get(&path) {
-        let inode = UserFS::new(pid);
-        let file_descriptor = current_file_descriptor_manager.add_inode(inode.clone(), open_mode);
-        return Some(file_descriptor);
+    if path.starts_with(':') {
+        let mut path = path.clone();
+        let c = path.remove(0);
+        assert_eq!(c, ':');
+        let (fs_name, user_path) = path.split_once(':')?;
+
+        if let Some(&pid) = PATH_TO_PID.lock().get(fs_name) {
+            let inode = UserFS::new(pid);
+            inode.write().when_mounted(user_path.to_string(), None);
+            inode.read().open(user_path.to_string());
+            let file_descriptor =
+                current_file_descriptor_manager.add_inode(inode.clone(), open_mode);
+            return Some(file_descriptor);
+        }
     }
 
     let inode = if path.starts_with("/") {
@@ -289,31 +299,24 @@ pub fn fstat(fd: FileDescriptor, buf_addr: usize) -> Option<usize> {
     Some(0)
 }
 
-pub fn list_dir(path: String) -> Vec<FileInfo> {
-    if path.starts_with("/") {
-        if let Some(inode) = get_inode_by_path(path) {
+pub fn list_dir(fd: FileDescriptor) -> Vec<FileInfo> {
+    if let Some(current_file_descriptor_manager) = get_file_descriptor_manager() {
+        let current = current_file_descriptor_manager.get_cwd();
+        if let Some(inode) = get_inode_by_fd(fd) {
             if inode.read().inode_type() == InodeTy::Dir {
                 let mut list = inode.read().list();
                 list.sort();
 
                 return list;
+            } else {
+                return Vec::new();
             }
+        } else {
+            return Vec::new();
         }
     } else {
-        if let Some(current_file_descriptor_manager) = get_file_descriptor_manager() {
-            let current = current_file_descriptor_manager.get_cwd();
-            let new = alloc::format!("{}{}", current, path);
-            if let Some(inode) = get_inode_by_path(new) {
-                if inode.read().inode_type() == InodeTy::Dir {
-                    let mut list = inode.read().list();
-                    list.sort();
-
-                    return list;
-                }
-            }
-        }
+        return Vec::new();
     }
-    return Vec::new();
 }
 
 pub fn change_cwd(path: String) {
