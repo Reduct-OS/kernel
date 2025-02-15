@@ -1,5 +1,7 @@
+use alloc::string::ToString;
 use spin::Lazy;
 use x86_64::VirtAddr;
+use x86_64::instructions::port::PortReadOnly;
 use x86_64::registers::control::Cr2;
 use x86_64::structures::idt::InterruptDescriptorTable;
 use x86_64::structures::idt::InterruptStackFrame;
@@ -114,10 +116,34 @@ extern "x86-interrupt" fn double_fault(frame: InterruptStackFrame, error_code: u
 
 extern "x86-interrupt" fn keyboard_interrupt(_frame: InterruptStackFrame) {
     crate::acpi::apic::end_of_interrupt();
+    let scancode = unsafe { PortReadOnly::new(0x60).read() };
+    let fd = crate::fs::operation::open(
+        ":ps2:keyboard".to_string(),
+        crate::fs::operation::OpenMode::ReadWrite,
+    );
+
+    log::debug!("fd = {:?}", fd);
+
+    if let Some(fd) = fd {
+        let buf = &[scancode];
+        crate::fs::operation::write(fd, buf);
+        crate::fs::operation::close(fd);
+    }
 }
 
 extern "x86-interrupt" fn mouse_interrupt(_frame: InterruptStackFrame) {
     crate::acpi::apic::end_of_interrupt();
+    let packet = unsafe { PortReadOnly::new(0x60).read() };
+    let fd = crate::fs::operation::open(
+        ":ps2:mouse".to_string(),
+        crate::fs::operation::OpenMode::ReadWrite,
+    );
+
+    if let Some(fd) = fd {
+        let buf = &[packet];
+        crate::fs::operation::write(fd, buf);
+        crate::fs::operation::close(fd);
+    }
 }
 
 extern "x86-interrupt" fn page_fault(frame: InterruptStackFrame, error_code: PageFaultErrorCode) {
