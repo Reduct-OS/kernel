@@ -100,7 +100,7 @@ impl Thread {
         thread.context.rip = regs.rcx;
         thread.context.cs = self.context.cs;
         thread.context.rflags = regs.r11;
-        thread.context.rsp = regs as *mut Context as usize;
+        thread.context.rsp = regs.address().as_u64() as usize;
         thread.context.ss = self.context.ss;
 
         thread.context.rax = 0;
