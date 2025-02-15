@@ -29,14 +29,14 @@ impl Inode for AcpiFS {
         self.path.clone()
     }
 
-    fn read_at(&self, _offset: usize, buf: &mut [u8]) -> usize {
+    fn read_at(&self, fd: usize, _offset: usize, buf: &mut [u8]) -> usize {
         let data = BUF.get().unwrap();
 
         buf.copy_from_slice(&data);
         data.len()
     }
 
-    fn size(&self) -> usize {
+    fn size(&self, _fd: usize) -> usize {
         let data = BUF.get().unwrap();
         data.len()
     }

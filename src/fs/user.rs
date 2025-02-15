@@ -11,6 +11,7 @@ use crate::{
 
 use super::{
     USER_FS_MANAGER,
+    operation::get_path_by_fd,
     vfs::inode::{FileInfo, Inode, InodeRef, InodeTy},
 };
 
@@ -154,7 +155,7 @@ impl Inode for UserFS {
         None
     }
 
-    fn read_at(&self, offset: usize, buf: &mut [u8]) -> usize {
+    fn read_at(&self, fd: usize, offset: usize, buf: &mut [u8]) -> usize {
         let user_fs_manager = USER_FS_MANAGER.lock();
         let fs_addr = user_fs_manager.get(&self.pid);
         if let Some(&fs_addr) = fs_addr {
@@ -165,6 +166,11 @@ impl Inode for UserFS {
                 buffer.as_mut_ptr() as usize,
                 buffer.len(),
             );
+
+            let path = get_path_by_fd(fd).unwrap();
+            let path = path.as_str();
+            command.ret_val = path.as_ptr() as isize;
+            command.ret_val2 = path.len() as isize;
 
             let process = SCHEDULER.lock().find(self.pid);
             if let Some(process) = process {
@@ -203,7 +209,7 @@ impl Inode for UserFS {
         usize::MAX
     }
 
-    fn write_at(&self, offset: usize, buf: &[u8]) -> usize {
+    fn write_at(&self, fd: usize, offset: usize, buf: &[u8]) -> usize {
         let user_fs_manager = USER_FS_MANAGER.lock();
         let fs_addr = user_fs_manager.get(&self.pid);
         if let Some(&fs_addr) = fs_addr {
@@ -215,6 +221,11 @@ impl Inode for UserFS {
                 buffer.as_mut_ptr() as usize,
                 buffer.len(),
             );
+
+            let path = get_path_by_fd(fd).unwrap();
+            let path = path.as_str();
+            command.ret_val = path.as_ptr() as isize;
+            command.ret_val2 = path.len() as isize;
 
             let process = SCHEDULER.lock().find(self.pid);
             if let Some(process) = process {
@@ -251,11 +262,17 @@ impl Inode for UserFS {
         usize::MAX
     }
 
-    fn size(&self) -> usize {
+    fn size(&self, fd: usize) -> usize {
         let user_fs_manager = USER_FS_MANAGER.lock();
         let fs_addr = user_fs_manager.get(&self.pid);
         if let Some(&fs_addr) = fs_addr {
             let mut command = UserCommand::new(USER_SIZE, 0, 0, 0);
+
+            let path = get_path_by_fd(fd).unwrap();
+            let path = path.as_str();
+            log::debug!("UserFS::size() called, path = {}", path);
+            command.ret_val = path.as_ptr() as isize;
+            command.ret_val2 = path.len() as isize;
 
             let process = SCHEDULER.lock().find(self.pid);
             if let Some(process) = process {
@@ -290,11 +307,16 @@ impl Inode for UserFS {
         usize::MAX
     }
 
-    fn list(&self) -> Vec<FileInfo> {
+    fn list(&self, fd: usize) -> Vec<FileInfo> {
         let user_fs_manager = USER_FS_MANAGER.lock();
         let fs_addr = user_fs_manager.get(&self.pid);
         if let Some(&fs_addr) = fs_addr {
             let mut command = UserCommand::new(USER_LIST, 0, 0, 0);
+
+            let path = get_path_by_fd(fd).unwrap();
+            let path = path.as_str();
+            command.ret_val = path.as_ptr() as isize;
+            command.ret_val2 = path.len() as isize;
 
             let process = SCHEDULER.lock().find(self.pid);
             if let Some(process) = process {

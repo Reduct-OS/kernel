@@ -7,6 +7,7 @@ static MODULE_REQUEST: ModuleRequest = ModuleRequest::new().with_internal_module
     &InternalModule::new().with_path(limine::cstr!("/drv/pcid")),
     &InternalModule::new().with_path(limine::cstr!("/drv/fsmd")),
     &InternalModule::new().with_path(limine::cstr!("/drv/nvmed")),
+    &InternalModule::new().with_path(limine::cstr!("/usr/init")),
 ]);
 
 fn load_module(module: &&limine::file::File) {

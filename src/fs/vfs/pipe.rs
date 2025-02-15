@@ -34,7 +34,7 @@ impl Inode for PipeFS {
         super::inode::InodeTy::File
     }
 
-    fn read_at(&self, _offset: usize, buf: &mut [u8]) -> usize {
+    fn read_at(&self, fd: usize, _offset: usize, buf: &mut [u8]) -> usize {
         while self.buffer.lock().is_empty() {
             crate::syscall::op::sys_yield();
         }
@@ -43,7 +43,7 @@ impl Inode for PipeFS {
         buf.len()
     }
 
-    fn write_at(&self, _offset: usize, buf: &[u8]) -> usize {
+    fn write_at(&self, fd: usize, _offset: usize, buf: &[u8]) -> usize {
         for &byte in buf {
             self.buffer.lock().push(0);
         }

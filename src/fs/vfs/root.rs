@@ -53,7 +53,7 @@ impl Inode for RootFS {
         super::inode::InodeTy::Dir
     }
 
-    fn list(&self) -> alloc::vec::Vec<super::inode::FileInfo> {
+    fn list(&self, _fd: usize) -> alloc::vec::Vec<super::inode::FileInfo> {
         let mut vec = Vec::new();
         for (name, inode) in self.nodes.iter() {
             vec.push(FileInfo::new(name.clone(), inode.read().inode_type()));

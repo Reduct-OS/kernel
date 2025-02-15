@@ -52,6 +52,7 @@ type FileTuple = (InodeRef, OpenMode, usize);
 
 struct FileDescriptorManager {
     file_descriptors: BTreeMap<FileDescriptor, FileTuple>,
+    file_descriptor_to_paths: BTreeMap<FileDescriptor, String>,
     file_descriptor_allocator: AtomicUsize,
     cwd: Mutex<InodeRef>,
 }
@@ -60,6 +61,7 @@ impl FileDescriptorManager {
     pub fn new(file_descriptors: BTreeMap<FileDescriptor, FileTuple>) -> Self {
         Self {
             file_descriptors,
+            file_descriptor_to_paths: BTreeMap::new(),
             file_descriptor_allocator: AtomicUsize::new(3), // 0, 1, and 2 are reserved for stdin, stdout, and stderr
             cwd: Mutex::new(ROOT.lock().clone()),
         }
@@ -76,6 +78,12 @@ impl FileDescriptorManager {
             .file_descriptors
             .insert(new_fd, (inode, mode, 0));
         new_fd
+    }
+
+    pub fn add_fd_to_path(&self, fd: FileDescriptor, path: String) {
+        ref_to_mut(self)
+            .file_descriptor_to_paths
+            .insert(fd, path.clone());
     }
 
     pub fn change_cwd(&self, path: String) {
@@ -158,6 +166,15 @@ pub fn get_inode_by_fd(file_descriptor: usize) -> Option<InodeRef> {
     Some(inode.clone())
 }
 
+pub fn get_path_by_fd(file_descriptor: usize) -> Option<String> {
+    let current_file_descriptor_manager = get_file_descriptor_manager()?;
+
+    current_file_descriptor_manager
+        .file_descriptor_to_paths
+        .get(&file_descriptor)
+        .cloned()
+}
+
 pub fn pipe(fd: &mut [FileDescriptor]) -> Option<usize> {
     assert_eq!(fd.len(), 2);
 
@@ -197,6 +214,7 @@ pub fn open(path: String, open_mode: OpenMode) -> Option<usize> {
             inode.read().open(user_path.to_string());
             let file_descriptor =
                 current_file_descriptor_manager.add_inode(inode.clone(), open_mode);
+            current_file_descriptor_manager.add_fd_to_path(file_descriptor, user_path.to_string());
             return Some(file_descriptor);
         }
     }
@@ -223,8 +241,12 @@ pub fn read(fd: FileDescriptor, buf: &mut [u8]) -> usize {
     }
     let current_file_descriptor_manager = current_file_descriptor_manager.unwrap();
 
-    if let Some((inode, _, offset)) = current_file_descriptor_manager.file_descriptors.get(&fd) {
-        inode.read().read_at(*offset, buf)
+    if let Some((inode, mode, offset)) = current_file_descriptor_manager.file_descriptors.get(&fd) {
+        match mode {
+            OpenMode::Read | OpenMode::ReadWrite => inode.read().read_at(fd, *offset, buf),
+
+            _ => 0,
+        }
     } else {
         0
     }
@@ -236,7 +258,7 @@ pub fn write(fd: FileDescriptor, buf: &[u8]) -> usize {
             current_file_descriptor_manager.file_descriptors.get(&fd)
         {
             match mode {
-                OpenMode::Write | OpenMode::ReadWrite => inode.read().write_at(*offset, buf),
+                OpenMode::Write | OpenMode::ReadWrite => inode.read().write_at(fd, *offset, buf),
 
                 _ => 0,
             }
@@ -274,7 +296,7 @@ pub fn fsize(fd: FileDescriptor) -> Option<usize> {
         .file_descriptors
         .get_mut(&fd)?;
 
-    let size = inode.read().size();
+    let size = inode.read().size(fd);
 
     Some(size)
 }
@@ -286,7 +308,7 @@ pub fn fstat(fd: FileDescriptor, buf_addr: usize) -> Option<usize> {
         .file_descriptors
         .get_mut(&fd)?;
 
-    let size = inode.read().size();
+    let size = fsize(fd)?;
 
     let mut stat_strcut = Stat::default();
     stat_strcut.st_size = size as u64;
@@ -304,7 +326,7 @@ pub fn list_dir(fd: FileDescriptor) -> Vec<FileInfo> {
         let current = current_file_descriptor_manager.get_cwd();
         if let Some(inode) = get_inode_by_fd(fd) {
             if inode.read().inode_type() == InodeTy::Dir {
-                let mut list = inode.read().list();
+                let mut list = inode.read().list(fd);
                 list.sort();
 
                 return list;

@@ -27,7 +27,7 @@ pub trait Inode: Sync + Send {
     fn when_umounted(&mut self);
 
     fn get_path(&self) -> String;
-    fn size(&self) -> usize {
+    fn size(&self, _fd: usize) -> usize {
         0
     }
 
@@ -35,10 +35,10 @@ pub trait Inode: Sync + Send {
         unimplemented!()
     }
 
-    fn read_at(&self, _offset: usize, _buf: &mut [u8]) -> usize {
+    fn read_at(&self, fd: usize, _offset: usize, _buf: &mut [u8]) -> usize {
         0
     }
-    fn write_at(&self, _offset: usize, _buf: &[u8]) -> usize {
+    fn write_at(&self, fd: usize, _offset: usize, _buf: &[u8]) -> usize {
         0
     }
     fn flush(&self) {
@@ -54,7 +54,7 @@ pub trait Inode: Sync + Send {
     fn ioctl(&self, _cmd: usize, _arg: usize) -> usize {
         unimplemented!()
     }
-    fn list(&self) -> Vec<FileInfo> {
+    fn list(&self, _fd: usize) -> Vec<FileInfo> {
         Vec::new()
     }
 
