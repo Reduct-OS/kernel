@@ -5,6 +5,7 @@ use limine::{modules::InternalModule, request::ModuleRequest};
 static MODULE_REQUEST: ModuleRequest = ModuleRequest::new().with_internal_modules(&[
     &InternalModule::new().with_path(limine::cstr!("/drv/acpid")),
     &InternalModule::new().with_path(limine::cstr!("/drv/pcid")),
+    &InternalModule::new().with_path(limine::cstr!("/drv/fbd")),
     &InternalModule::new().with_path(limine::cstr!("/drv/fsmd")),
     &InternalModule::new().with_path(limine::cstr!("/drv/nvmed")),
     &InternalModule::new().with_path(limine::cstr!("/usr/init")),
@@ -21,6 +22,7 @@ pub fn load_all_module() {
     for module in MODULE_REQUEST.get_response().unwrap().modules() {
         if module.path() == "/drv/acpid".as_bytes()
             || module.path() == "/drv/pcid".as_bytes()
+            || module.path() == "/drv/fbd".as_bytes()
             || module.path() == "/drv/fsmd".as_bytes()
         {
             load_module(module);

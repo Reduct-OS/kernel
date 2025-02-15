@@ -270,7 +270,6 @@ impl Inode for UserFS {
 
             let path = get_path_by_fd(fd).unwrap();
             let path = path.as_str();
-            log::debug!("UserFS::size() called, path = {}", path);
             command.ret_val = path.as_ptr() as isize;
             command.ret_val2 = path.len() as isize;
 
